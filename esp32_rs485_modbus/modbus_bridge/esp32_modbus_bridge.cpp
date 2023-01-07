@@ -1,4 +1,4 @@
-#include "esp32_modbus_bridge.h"
+ #include "esp32_modbus_bridge.h"
 
 #define RX() { if (rs485_dir_pin >= 0) digitalWrite(rs485_dir_pin, rs485_dir_inv); }
 #define TX() { if (rs485_dir_pin >= 0) digitalWrite(rs485_dir_pin, !rs485_dir_inv); }
@@ -51,20 +51,24 @@ void ModbusBridge::service (WiFiClient* tcpclient, HardwareSerial* serialclient,
   uint8_t serialbuf[512];
   uint8_t tcpbuf[512];
   uint8_t *pbuf;
+  uint8_t *tbuf;
   uint16_t counter = 0;
   uint16_t len;
   uint16_t crc;
 
     RX();
-    pbuf = serialbuf;
+    pbuf = tbuf = serialbuf;
     while (serialclient->available()) {
       *pbuf++ = serialclient->read();
     }
     // Read from serial
     if (pbuf != serialbuf) {
-      delay(100);
-      while (serialclient->available()) {
-        *pbuf++ = serialclient->read();
+      while (pbuf != tbuf) {
+        tbuf = pbuf;
+        delay(100);
+        while (serialclient->available()) {
+          *pbuf++ = serialclient->read();
+        }        
       }
       len = pbuf - serialbuf;
       debug("From serial:");
@@ -135,6 +139,17 @@ void ModbusBridge::service (WiFiClient* tcpclient, HardwareSerial* serialclient,
           serialclient->flush();
           break;
         case MODBUS_TCP:
+          // This helper only accepts full modbus frames in single TCP frames, so ignore short packets
+          if (len > 6) {
+            // enough to read length
+            if (len < ((tcpbuf[4]<<8) | (tcpbuf[5])+6)) {
+              debugln("Incomplete frame received, ignoring.");
+              break;
+            }
+          } else {
+            debugln("Partial frame received, ignoring.");
+            break;
+          }
           if (role == BRIDGE_NET_RESPONDER) {
             // compare received transaction ID to our counter
             if (counter != (tcpbuf[0] << 8) | tcpbuf[1]) {
