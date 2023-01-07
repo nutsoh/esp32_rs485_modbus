@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "esp32_modbus_bridge.h"
+#include <ArduinoOTA.h>
 
 const char* ssid = "your SSID";
 const char* password =  "your PASSWORD";
@@ -49,6 +50,7 @@ static void setup_networking () {
   dserver.begin();
   Serial.println("Connected to the WiFi network");
   Serial.println(WiFi.localIP());
+  ArduinoOTA.begin();
 }
 
 void setup() {
@@ -69,19 +71,19 @@ void loop() {
     dclient = dserver.available();
   }
   if (!connected) {
-  wclient = wserver.available();
+    wclient = wserver.available();
     if (wclient.connected()) {
       printer_f("tcp client connected");
-    connected = true;
-  }
+      connected = true;
+    }
   }
   if (connected) {
     if (wclient.connected()) {
-    bridge.service(&wclient, &Serial1, ModbusBridge::MODBUS_TCP, ModbusBridge::BRIDGE_NET_INITIATOR, PIN_CTS, false);
+      bridge.service(&wclient, &Serial1, ModbusBridge::MODBUS_TCP, ModbusBridge::BRIDGE_NET_INITIATOR, PIN_CTS, false);
     } else {
       printer_f("tcp client disconnected\n");
       delay(1000);
-  connected = false;
+      connected = false;
     }
   }
   if (WiFi.status() != WL_CONNECTED) {
@@ -89,4 +91,5 @@ void loop() {
     delay(1000);
     ESP.restart();
   }
+  ArduinoOTA.handle();
 }
