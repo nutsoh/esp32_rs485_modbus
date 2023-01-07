@@ -20,7 +20,10 @@ public:
   ModbusBridge (void);
   ~ModbusBridge (void);
 
+  typedef size_t (*printf_cb)(const char* format, ...);
+
   void service (WiFiClient* tcpclient, HardwareSerial* serial, ModbusBridgeMode_t mode, ModbusBridgeRole_t role, uint16_t rs485_dir_pin=-1, bool rs485_dir_inv=false);
+  void set_printf(printf_cb fnc);
 private:
   CRC16 modbus_crc;
 };

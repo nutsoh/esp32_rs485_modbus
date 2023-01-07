@@ -6,15 +6,17 @@
 // Uncomment to see the actual flow of data mirrored in the debug serial port
 //#define DEBUG_BRIDGE
 
+ModbusBridge::printf_cb dbg_printf;
+
 #ifdef DEBUG_BRIDGE
-  #define debug(a) Serial.print(a)
-  #define debugf(a,...) Serial.printf(a, __VA_ARGS__)
-  #define debugln(a) Serial.println(a)
+  #define debugf(a,...) { if (dbg_printf != NULL) {dbg_printf(a, __VA_ARGS__);} else {Serial.printf(a, __VA_ARGS__);} }
+  #define debug(a) debugf("%s", a)
+  #define debugln(a) debugf("%s\n", a)
   static void debug_buf (uint8_t* buf, uint16_t len) {
     for (uint16_t i=0; i<len; i++) {
-      Serial.printf(" %02X", buf[i]);
+      debugf(" %02X", buf[i]);
     }
-    Serial.printf(" (%d bytes)", len);
+    debugf(" (%d bytes)", len);
   }
 #else
   #define debug(a)
@@ -31,11 +33,17 @@ ModbusBridge::ModbusBridge (void)
   modbus_crc.setReverseIn(true);
   modbus_crc.setReverseOut(true);
 
+  dbg_printf = NULL;
 }
 
 ModbusBridge::~ModbusBridge (void)
 {
 
+}
+
+void ModbusBridge::set_printf(printf_cb fnc)
+{
+  dbg_printf = fnc;
 }
 
 void ModbusBridge::service (WiFiClient* tcpclient, HardwareSerial* serialclient, ModbusBridgeMode_t mode, ModbusBridgeRole_t role, uint16_t rs485_dir_pin, bool rs485_dir_inv)
